@@ -1,0 +1,152 @@
+diff -ur libspnav-0.2.2/configure libspnav/configure
+--- libspnav-0.2.2/spnav.h.orig	2011-11-30 22:54:06.447272302 +0100
++++ libspnav/spnav.h	2011-11-30 22:54:25.730605731 +0100
+@@ -27,7 +27,7 @@
+ #ifndef SPACENAV_H_
+ #define SPACENAV_H_
+ 
+-#include <spnav_config.h>
++#include "spnav_config.h"
+ 
+ #ifdef USE_X11
+ #include <X11/Xlib.h>
+--- libspnav-0.2.2/configure	2009-07-21 00:17:15.000000000 +0200
++++ libspnav/configure	2011-11-30 23:14:24.000000000 +0100
+@@ -10,9 +10,9 @@
+ srcdir="`dirname "$0"`"
+ libdir=lib
+ 
+-#if [ "`uname -m`" = 'x86_64' ]; then
+-#	libdir=lib64
+-#fi
++if [ "`uname -m`" = 'x86_64' ]; then
++	libdir=lib64
++fi
+ 
+ for arg; do
+ 	case "$arg" in
+@@ -56,6 +56,12 @@
+ echo "  optimize for speed: $OPT"
+ echo "  include debugging symbols: $DBG"
+ echo "  x11 communication method: $X11"
++if [ -n "$CFLAGS" ]; then
++	echo "  cflags: $CFLAGS"
++fi
++if [ -n "$LDFLAGS" ]; then
++	echo "  ldflags: $LDFLAGS"
++fi
+ echo ""
+ 
+ if [ "$X11" = "no" ]; then
+@@ -69,6 +75,13 @@
+ echo "srcdir = $srcdir" >>Makefile
+ echo "libdir = $libdir" >>Makefile
+ 
++if [ -n "$CFLAGS" ]; then
++	echo "user_cflags = $CFLAGS" >>Makefile
++fi
++if [ -n "$LDFLAGS" ]; then
++	echo "user_ldflags = $LDFLAGS" >>Makefile
++fi
++
+ if [ "$DBG" = 'yes' ]; then
+ 	echo 'dbg = -g' >>Makefile
+ fi
+diff -ur libspnav-0.2.2/README libspnav/README
+--- libspnav-0.2.2/README	2010-03-28 00:29:59.000000000 +0100
++++ libspnav/README	2011-11-30 23:14:24.000000000 +0100
+@@ -25,7 +25,7 @@
+ 3. License
+ 
+ libspnav is part of the spacenav project (spacenav.sf.net)
+-Copyright (C) 2007-2010 John Tsiombikas <nuclear@member.fsf.org>
++Copyright (C) 2007-2009 John Tsiombikas <nuclear@member.fsf.org>
+ 
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+diff -ur libspnav-0.2.2/spnav.c libspnav/spnav.c
+--- libspnav-0.2.2/spnav.c	2010-03-28 00:24:27.000000000 +0100
++++ libspnav/spnav.c	2011-11-30 23:14:24.000000000 +0100
+@@ -36,7 +36,7 @@
+ #include <sys/select.h>
+ #include "spnav.h"
+ 
+-#define SPNAV_SOCK_PATH "/var/run/spnav.sock" 
++#define SPNAV_SOCK_PATH "/var/run/spnav.sock"
+ 
+ #ifdef USE_X11
+ #include <X11/Xlib.h>
+@@ -481,6 +481,7 @@
+ 			free(tmplist);
+ 			tmplist = node;
+ 		}
++		free(tmplist);
+ 
+ 		return rm_count;
+ 	}
+diff -ur libspnav-0.2.2/spnav.h libspnav/spnav.h
+--- libspnav-0.2.2/spnav.h	2010-03-28 00:24:27.000000000 +0100
++++ libspnav/spnav.h	2011-11-30 23:14:24.000000000 +0100
+@@ -73,7 +73,7 @@
+ int spnav_open(void);
+ 
+ /* Close connection to the daemon. Use it for X11 or AF_UNIX connections.
+- * Returns -1 on failure 
++ * Returns -1 on failure
+  */
+ int spnav_close(void);
+ 
+--- libspnav-0.2.2/Makefile.in	2010-03-28 00:24:27.000000000 +0100
++++ libspnav/Makefile.in	2011-11-30 23:14:24.000000000 +0100
+@@ -4,10 +4,12 @@
+ lib_a = libspnav.a
+ soname = libspnav.so.0
+ lib_so = $(soname).1
++devlink = libspnav.so
+ 
+ CC = gcc
+ AR = ar
+-CFLAGS = $(opt) $(dbg) -std=c89 -fpic -pedantic -Wall -fno-strict-aliasing -I.
++CFLAGS = $(opt) $(dbg) -std=c89 -fpic -pedantic -Wall -fno-strict-aliasing -I. $(user_cflags)
++LDFLAGS = $(user_ldflags) -lX11
+ 
+ .PHONY: all
+ all: $(lib_a) $(lib_so)
+@@ -16,7 +18,7 @@
+ 	$(AR) rcs $@ $(obj)
+ 
+ $(lib_so): $(obj)
+-	$(CC) -shared -Wl,-soname,$(soname) -o $@ $(obj)
++	$(CC) -shared -Wl,-soname,$(soname) -o $@ $(obj) $(LDFLAGS)
+ 
+ %.o: $(srcdir)/%.c
+ 	$(CC) $(CFLAGS) -c $< -o $@
+@@ -31,13 +33,21 @@
+ 
+ .PHONY: install
+ install: $(lib_a) $(lib_so)
+-	cp $(lib_a) $(PREFIX)/$(libdir)/$(lib_a)
+-	cp $(lib_so) $(PREFIX)/$(libdir)/$(lib_so)
+-	for h in $(hdr); do cp -p $(srcdir)/$$h $(PREFIX)/include/; done
++	ln -s $(lib_so) $(soname)
++	ln -s $(soname) $(devlink)
++	mkdir -p $(DESTDIR)$(PREFIX)/$(libdir) $(DESTDIR)$(PREFIX)/include
++	cp $(lib_a) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
++	cp -d $(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
++	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink)
++	cp $(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(soname)
++	cp -d $(devlink) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink)
++	for h in $(hdr); do cp -p $(srcdir)/$$h $(DESTDIR)$(PREFIX)/include/; done
+ 
+ .PHONY: uninstall
+ uninstall:
+-	rm -f $(PREFIX)/$(libdir)/$(lib_a)
+-	rm -f $(PREFIX)/$(libdir)/$(lib_so)
+-	for i in $(hdr); do rm -f $(PREFIX)/include/$$i; done
++	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
++	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
++	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname)
++	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink)
++	for i in $(hdr); do rm -f $(DESTDIR)$(PREFIX)/include/$$i; done
+ 
+ 
