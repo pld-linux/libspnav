@@ -2,7 +2,7 @@ Summary:	A free, compatible alternative for 3Dconnexion's 3D input device driver
 Summary(pl.UTF-8):	-
 Name:		libspnav
 Version:	0.2.2
-Release:	0.1
+Release:	1
 License:	BSD
 Group:		Development
 Source0:	http://downloads.sourceforge.net/spacenav/%{name}-%{version}.tar.gz
@@ -52,6 +52,9 @@ install -d $RPM_BUILD_ROOT%{_libdir}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
+
+%post -p /sbin/ldconfig
+%postun -p /sbin/ldconfig
 
 %files
 %defattr(644,root,root,755)
