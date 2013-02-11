@@ -10,22 +10,37 @@ diff -ur libspnav-0.2.2/configure libspnav/configure
  
  #ifdef USE_X11
  #include <X11/Xlib.h>
---- libspnav-0.2.2/configure	2009-07-21 00:17:15.000000000 +0200
-+++ libspnav/configure	2011-11-30 23:14:24.000000000 +0100
-@@ -10,9 +10,9 @@
+--- libspnav-0.2.2/configure.orig	2009-07-21 00:17:15.000000000 +0200
++++ libspnav-0.2.2/configure	2013-02-11 20:13:32.392810184 +0100
+@@ -8,11 +8,11 @@
+ X11=yes
+ 
  srcdir="`dirname "$0"`"
- libdir=lib
+-libdir=lib
++libdir=$PREFIX/lib
  
 -#if [ "`uname -m`" = 'x86_64' ]; then
 -#	libdir=lib64
 -#fi
 +if [ "`uname -m`" = 'x86_64' ]; then
-+	libdir=lib64
++	libdir=$PREFIX/lib64
 +fi
  
  for arg; do
  	case "$arg" in
-@@ -56,6 +56,12 @@
+@@ -20,7 +20,10 @@
+ 		value=`echo $arg | sed 's/--prefix=//'`
+ 		PREFIX=${value:-$prefix}
+ 		;;
+-	
++	--libdir=*)
++		libdir=`echo $arg | sed 's/--libdir=//'`
++		;;
++
+ 	--enable-opt)
+ 		OPT=yes;;
+ 	--disable-opt)
+@@ -56,6 +59,12 @@
  echo "  optimize for speed: $OPT"
  echo "  include debugging symbols: $DBG"
  echo "  x11 communication method: $X11"
@@ -38,7 +53,7 @@ diff -ur libspnav-0.2.2/configure libspnav/configure
  echo ""
  
  if [ "$X11" = "no" ]; then
-@@ -69,6 +75,13 @@
+@@ -69,6 +78,13 @@
  echo "srcdir = $srcdir" >>Makefile
  echo "libdir = $libdir" >>Makefile
  
@@ -52,18 +67,6 @@ diff -ur libspnav-0.2.2/configure libspnav/configure
  if [ "$DBG" = 'yes' ]; then
  	echo 'dbg = -g' >>Makefile
  fi
-diff -ur libspnav-0.2.2/README libspnav/README
---- libspnav-0.2.2/README	2010-03-28 00:29:59.000000000 +0100
-+++ libspnav/README	2011-11-30 23:14:24.000000000 +0100
-@@ -25,7 +25,7 @@
- 3. License
- 
- libspnav is part of the spacenav project (spacenav.sf.net)
--Copyright (C) 2007-2010 John Tsiombikas <nuclear@member.fsf.org>
-+Copyright (C) 2007-2009 John Tsiombikas <nuclear@member.fsf.org>
- 
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
 diff -ur libspnav-0.2.2/spnav.c libspnav/spnav.c
 --- libspnav-0.2.2/spnav.c	2010-03-28 00:24:27.000000000 +0100
 +++ libspnav/spnav.c	2011-11-30 23:14:24.000000000 +0100
@@ -96,8 +99,8 @@ diff -ur libspnav-0.2.2/spnav.h libspnav/spnav.h
   */
  int spnav_close(void);
  
---- libspnav-0.2.2/Makefile.in	2010-03-28 00:24:27.000000000 +0100
-+++ libspnav/Makefile.in	2011-11-30 23:14:24.000000000 +0100
+--- libspnav-0.2.2/Makefile.in.orig	2010-03-28 00:24:27.000000000 +0100
++++ libspnav-0.2.2/Makefile.in	2013-02-11 20:15:04.166139664 +0100
 @@ -4,10 +4,12 @@
  lib_a = libspnav.a
  soname = libspnav.so.0
@@ -130,12 +133,12 @@ diff -ur libspnav-0.2.2/spnav.h libspnav/spnav.h
 -	for h in $(hdr); do cp -p $(srcdir)/$$h $(PREFIX)/include/; done
 +	ln -s $(lib_so) $(soname)
 +	ln -s $(soname) $(devlink)
-+	mkdir -p $(DESTDIR)$(PREFIX)/$(libdir) $(DESTDIR)$(PREFIX)/include
-+	cp $(lib_a) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
-+	cp -d $(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
-+	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink)
-+	cp $(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(soname)
-+	cp -d $(devlink) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink)
++	mkdir -p $(DESTDIR)$(libdir) $(DESTDIR)$(PREFIX)/include
++	cp $(lib_a) $(DESTDIR)$(libdir)/$(lib_a)
++	cp -d $(lib_so) $(DESTDIR)$(libdir)/$(lib_so)
++	rm -f $(DESTDIR)$(libdir)/$(soname) $(DESTDIR)$(libdir)/$(devlink)
++	cp $(soname) $(DESTDIR)$(libdir)/$(soname)
++	cp -d $(devlink) $(DESTDIR)$(libdir)/$(devlink)
 +	for h in $(hdr); do cp -p $(srcdir)/$$h $(DESTDIR)$(PREFIX)/include/; done
  
  .PHONY: uninstall
@@ -143,10 +146,9 @@ diff -ur libspnav-0.2.2/spnav.h libspnav/spnav.h
 -	rm -f $(PREFIX)/$(libdir)/$(lib_a)
 -	rm -f $(PREFIX)/$(libdir)/$(lib_so)
 -	for i in $(hdr); do rm -f $(PREFIX)/include/$$i; done
-+	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
-+	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
-+	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname)
-+	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink)
++	rm -f $(DESTDIR)$(libdir)/$(lib_a)
++	rm -f $(DESTDIR)$(libdir)/$(lib_so)
++	rm -f $(DESTDIR)$(libdir)/$(soname)
++	rm -f $(DESTDIR)$(libdir)/$(devlink)
 +	for i in $(hdr); do rm -f $(DESTDIR)$(PREFIX)/include/$$i; done
- 
  
