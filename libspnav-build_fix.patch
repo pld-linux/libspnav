@@ -40,115 +40,46 @@ diff -ur libspnav-0.2.2/configure libspnav/configure
  	--enable-opt)
  		OPT=yes;;
  	--disable-opt)
-@@ -56,6 +59,12 @@
- echo "  optimize for speed: $OPT"
- echo "  include debugging symbols: $DBG"
- echo "  x11 communication method: $X11"
-+if [ -n "$CFLAGS" ]; then
-+	echo "  cflags: $CFLAGS"
-+fi
-+if [ -n "$LDFLAGS" ]; then
-+	echo "  ldflags: $LDFLAGS"
-+fi
- echo ""
- 
- if [ "$X11" = "no" ]; then
-@@ -69,6 +78,13 @@
- echo "srcdir = $srcdir" >>Makefile
- echo "libdir = $libdir" >>Makefile
- 
-+if [ -n "$CFLAGS" ]; then
-+	echo "user_cflags = $CFLAGS" >>Makefile
-+fi
-+if [ -n "$LDFLAGS" ]; then
-+	echo "user_ldflags = $LDFLAGS" >>Makefile
-+fi
-+
- if [ "$DBG" = 'yes' ]; then
- 	echo 'dbg = -g' >>Makefile
- fi
-diff -ur libspnav-0.2.2/spnav.c libspnav/spnav.c
---- libspnav-0.2.2/spnav.c	2010-03-28 00:24:27.000000000 +0100
-+++ libspnav/spnav.c	2011-11-30 23:14:24.000000000 +0100
-@@ -36,7 +36,7 @@
- #include <sys/select.h>
- #include "spnav.h"
- 
--#define SPNAV_SOCK_PATH "/var/run/spnav.sock" 
-+#define SPNAV_SOCK_PATH "/var/run/spnav.sock"
- 
- #ifdef USE_X11
- #include <X11/Xlib.h>
-@@ -481,6 +481,7 @@
- 			free(tmplist);
- 			tmplist = node;
- 		}
-+		free(tmplist);
- 
- 		return rm_count;
- 	}
-diff -ur libspnav-0.2.2/spnav.h libspnav/spnav.h
---- libspnav-0.2.2/spnav.h	2010-03-28 00:24:27.000000000 +0100
-+++ libspnav/spnav.h	2011-11-30 23:14:24.000000000 +0100
-@@ -73,7 +73,7 @@
- int spnav_open(void);
- 
- /* Close connection to the daemon. Use it for X11 or AF_UNIX connections.
-- * Returns -1 on failure 
-+ * Returns -1 on failure
-  */
- int spnav_close(void);
- 
---- libspnav-0.2.2/Makefile.in.orig	2010-03-28 00:24:27.000000000 +0100
-+++ libspnav-0.2.2/Makefile.in	2013-02-11 20:15:04.166139664 +0100
-@@ -4,10 +4,12 @@
- lib_a = libspnav.a
- soname = libspnav.so.0
- lib_so = $(soname).1
-+devlink = libspnav.so
- 
- CC = gcc
- AR = ar
--CFLAGS = $(opt) $(dbg) -std=c89 -fpic -pedantic -Wall -fno-strict-aliasing -I.
-+CFLAGS = $(opt) $(dbg) -std=c89 -fpic -pedantic -Wall -fno-strict-aliasing -I. $(user_cflags)
-+LDFLAGS = $(user_ldflags) -lX11
- 
- .PHONY: all
- all: $(lib_a) $(lib_so)
-@@ -16,7 +18,7 @@
+--- libspnav-0.2.3/Makefile.in.orig	2014-08-18 03:38:31.000000000 +0200
++++ libspnav-0.2.3/Makefile.in	2017-12-17 18:07:21.386501353 +0100
+@@ -34,7 +34,7 @@
  	$(AR) rcs $@ $(obj)
  
  $(lib_so): $(obj)
--	$(CC) -shared -Wl,-soname,$(soname) -o $@ $(obj)
-+	$(CC) -shared -Wl,-soname,$(soname) -o $@ $(obj) $(LDFLAGS)
+-	$(CC) $(shared) -o $@ $(obj) $(LDFLAGS)
++	$(CC) $(LDFLAGS) $(shared) -o $@ $(obj)
  
  %.o: $(srcdir)/%.c
  	$(CC) $(CFLAGS) -c $< -o $@
-@@ -31,13 +33,21 @@
+@@ -49,22 +49,22 @@
  
  .PHONY: install
  install: $(lib_a) $(lib_so)
--	cp $(lib_a) $(PREFIX)/$(libdir)/$(lib_a)
--	cp $(lib_so) $(PREFIX)/$(libdir)/$(lib_so)
--	for h in $(hdr); do cp -p $(srcdir)/$$h $(PREFIX)/include/; done
-+	ln -s $(lib_so) $(soname)
-+	ln -s $(soname) $(devlink)
+-	mkdir -p $(DESTDIR)$(PREFIX)/$(libdir) $(DESTDIR)$(PREFIX)/include
+-	cp $(lib_a) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
+-	cp $(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
 +	mkdir -p $(DESTDIR)$(libdir) $(DESTDIR)$(PREFIX)/include
 +	cp $(lib_a) $(DESTDIR)$(libdir)/$(lib_a)
-+	cp -d $(lib_so) $(DESTDIR)$(libdir)/$(lib_so)
-+	rm -f $(DESTDIR)$(libdir)/$(soname) $(DESTDIR)$(libdir)/$(devlink)
-+	cp $(soname) $(DESTDIR)$(libdir)/$(soname)
-+	cp -d $(devlink) $(DESTDIR)$(libdir)/$(devlink)
-+	for h in $(hdr); do cp -p $(srcdir)/$$h $(DESTDIR)$(PREFIX)/include/; done
++	cp $(lib_so) $(DESTDIR)$(libdir)/$(lib_so)
+ 	[ -n "$(soname)" ] && \
+-		rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink) && \
+-		ln -s $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) && \
+-		ln -s $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink) || \
++		rm -f $(DESTDIR)$(libdir)/$(soname) $(DESTDIR)$(libdir)/$(devlink) && \
++		ln -s $(lib_so) $(DESTDIR)$(libdir)/$(soname) && \
++		ln -s $(soname) $(DESTDIR)$(libdir)/$(devlink) || \
+ 		true
+ 	for h in $(hdr); do cp -p $(srcdir)/$$h $(DESTDIR)$(PREFIX)/include/; done
  
  .PHONY: uninstall
  uninstall:
--	rm -f $(PREFIX)/$(libdir)/$(lib_a)
--	rm -f $(PREFIX)/$(libdir)/$(lib_so)
--	for i in $(hdr); do rm -f $(PREFIX)/include/$$i; done
+-	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
+-	rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
 +	rm -f $(DESTDIR)$(libdir)/$(lib_a)
 +	rm -f $(DESTDIR)$(libdir)/$(lib_so)
-+	rm -f $(DESTDIR)$(libdir)/$(soname)
-+	rm -f $(DESTDIR)$(libdir)/$(devlink)
-+	for i in $(hdr); do rm -f $(DESTDIR)$(PREFIX)/include/$$i; done
+ 	[ -n "$(soname)" ] && \
+-		rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink) || \
++		rm -f $(DESTDIR)$(libdir)/$(soname) $(DESTDIR)$(libdir)/$(devlink) || \
+ 		true
+ 	for i in $(hdr); do rm -f $(DESTDIR)$(PREFIX)/include/$$i; done
  
