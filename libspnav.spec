@@ -1,15 +1,14 @@
 Summary:	A free, compatible alternative for 3Dconnexion's 3D input device drivers and SDK
 Summary(pl.UTF-8):	Wolnodostępne alternatywne sterowniki wejściowe i SDK do urządzeń 3Dconnexion
 Name:		libspnav
-Version:	0.2.3
-Release:	1
+Version:	1.2
+Release:	2
 License:	BSD
 Group:		Libraries
-Source0:	http://downloads.sourceforge.net/spacenav/%{name}-%{version}.tar.gz
-# Source0-md5:	44d840540d53326d4a119c0f1aa7bf0a
+Source0:	https://github.com/FreeSpacenav/libspnav/archive/v%{version}/%{name}-%{version}.tar.gz
+# Source0-md5:	e50166801e49fab9dba026ab3023d367
 Patch0:		%{name}-build_fix.patch
-URL:		http://spacenav.sourceforge.net/
-BuildRequires:	automake
+URL:		https://github.com/FreeSpacenav/libspnav
 BuildRequires:	xorg-lib-libX11-devel
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
@@ -52,6 +51,7 @@ Statyczna biblioteka libspnav.
 
 %build
 %configure \
+	--disable-debug \
 	--disable-opt
 
 %{__make}
@@ -71,14 +71,15 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(644,root,root,755)
-%doc README
+%doc README.md
 %attr(755,root,root) %{_libdir}/libspnav.so.*.*
-%attr(755,root,root) %ghost %{_libdir}/libspnav.so.0
+%ghost %{_libdir}/libspnav.so.0
 
 %files devel
 %defattr(644,root,root,755)
-%attr(755,root,root) %{_libdir}/libspnav.so
+%{_libdir}/libspnav.so
 %{_includedir}/spnav*.h
+%{_pkgconfigdir}/spnav.pc
 
 %files static
 %defattr(644,root,root,755)
