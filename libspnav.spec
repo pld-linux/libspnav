@@ -2,7 +2,7 @@ Summary:	A free, compatible alternative for 3Dconnexion's 3D input device driver
 Summary(pl.UTF-8):	Wolnodostępne alternatywne sterowniki wejściowe i SDK do urządzeń 3Dconnexion
 Name:		libspnav
 Version:	1.2
-Release:	2
+Release:	3
 License:	BSD
 Group:		Libraries
 Source0:	https://github.com/FreeSpacenav/libspnav/archive/v%{version}/%{name}-%{version}.tar.gz

@@ -1,19 +1,7 @@
-diff -ur libspnav-0.2.2/configure libspnav/configure
---- libspnav-0.2.2/spnav.h.orig	2011-11-30 22:54:06.447272302 +0100
-+++ libspnav/spnav.h	2011-11-30 22:54:25.730605731 +0100
-@@ -27,7 +27,7 @@
- #ifndef SPACENAV_H_
- #define SPACENAV_H_
- 
--#include <spnav_config.h>
-+#include "spnav_config.h"
- 
- #ifdef USE_X11
- #include <X11/Xlib.h>
 --- libspnav-0.2.2/configure.orig	2009-07-21 00:17:15.000000000 +0200
 +++ libspnav-0.2.2/configure	2013-02-11 20:13:32.392810184 +0100
 @@ -8,11 +8,11 @@
- X11=yes
+ echo "configuring libspnav - $VER"
  
  srcdir="`dirname "$0"`"
 -libdir=lib
@@ -40,21 +28,21 @@ diff -ur libspnav-0.2.2/configure libspnav/configure
  	--enable-opt)
  		OPT=yes;;
  	--disable-opt)
+@@ -125,7 +128,7 @@
+ echo 'creating spnav.pc ...'
+ pcver=`echo $VER | sed 's/^v//'`
+ echo "PREFIX=$PREFIX" >spnav.pc
+-cat "$srcdir/spnav.pc.in" | sed "s/@VERSION@/$pcver/; s/@LIBDIR@/$libdir/" >>spnav.pc
++cat "$srcdir/spnav.pc.in" | sed "s/@VERSION@/$pcver/; s|@LIBDIR@|$libdir|" >>spnav.pc
+ 
+ #done
+ echo ''
 --- libspnav-0.2.3/Makefile.in.orig	2014-08-18 03:38:31.000000000 +0200
 +++ libspnav-0.2.3/Makefile.in	2017-12-17 18:07:21.386501353 +0100
-@@ -34,7 +34,7 @@
- 	$(AR) rcs $@ $(obj)
- 
- $(lib_so): $(obj)
--	$(CC) $(shared) -o $@ $(obj) $(LDFLAGS)
-+	$(CC) $(LDFLAGS) $(shared) -o $@ $(obj)
- 
- %.o: $(srcdir)/%.c
- 	$(CC) $(CFLAGS) -c $< -o $@
-@@ -49,22 +49,22 @@
+@@ -49,28 +49,28 @@
  
  .PHONY: install
- install: $(lib_a) $(lib_so)
+ install: $(lib_a) $(lib_so) $(hdr)
 -	mkdir -p $(DESTDIR)$(PREFIX)/$(libdir) $(DESTDIR)$(PREFIX)/include
 -	cp $(lib_a) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
 -	cp $(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
@@ -63,13 +51,17 @@ diff -ur libspnav-0.2.2/configure libspnav/configure
 +	cp $(lib_so) $(DESTDIR)$(libdir)/$(lib_so)
  	[ -n "$(soname)" ] && \
 -		rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink) && \
--		ln -s $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) && \
--		ln -s $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink) || \
+-		cd $(DESTDIR)$(PREFIX)/$(libdir) && \
 +		rm -f $(DESTDIR)$(libdir)/$(soname) $(DESTDIR)$(libdir)/$(devlink) && \
-+		ln -s $(lib_so) $(DESTDIR)$(libdir)/$(soname) && \
-+		ln -s $(soname) $(DESTDIR)$(libdir)/$(devlink) || \
++		cd $(DESTDIR)$(libdir) && \
+ 		ln -s $(lib_so) $(soname) && \
+ 		ln -s $(soname) $(devlink) || \
  		true
  	for h in $(hdr); do cp -p $(srcdir)/$$h $(DESTDIR)$(PREFIX)/include/; done
+-	mkdir -p $(DESTDIR)$(PREFIX)/share/pkgconfig
+-	cp spnav.pc $(DESTDIR)$(PREFIX)/share/pkgconfig/spnav.pc
++	mkdir -p $(DESTDIR)$(libdir)/pkgconfig
++	cp spnav.pc $(DESTDIR)$(libdir)/pkgconfig/spnav.pc
  
  .PHONY: uninstall
  uninstall:
@@ -82,4 +74,16 @@ diff -ur libspnav-0.2.2/configure libspnav/configure
 +		rm -f $(DESTDIR)$(libdir)/$(soname) $(DESTDIR)$(libdir)/$(devlink) || \
  		true
  	for i in $(hdr); do rm -f $(DESTDIR)$(PREFIX)/include/$$i; done
+-	rm -f $(DESTDIR)$(PREFIX)/share/pkgconfig/spnav.pc
++	rm -f $(DESTDIR)$(libdir)pkgconfig/spnav.pc
  
+ .PHONY: examples
+ examples:
+--- libspnav-1.2/spnav.pc.in.orig	2025-03-30 04:42:13.000000000 +0200
++++ libspnav-1.2/spnav.pc.in	2026-08-22 19:00:02.761416581 +0200
+@@ -3,4 +3,4 @@
+ URL: http://spacenav.sourceforge.net
+ Version: @VERSION@
+ Cflags: -I${PREFIX}/include
+-Libs: -L${PREFIX}/@LIBDIR@ -lspnav
++Libs: -L@LIBDIR@ -lspnav
